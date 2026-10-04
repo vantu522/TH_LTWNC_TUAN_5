@@ -51,14 +51,14 @@ export interface Customer extends BaseEntity<string> {
 }
 
 export interface OrderItem {
-  productId: string; // Khóa ngoại liên kết tới Product
+  productId: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
 }
 
 export interface Order extends BaseEntity<string> {
-  customerId: string; // Khóa ngoại liên kết tới Customer
+  customerId: string;
   items: OrderItem[];
   status: OrderStatus;
   paymentMethod: PaymentMethod;
