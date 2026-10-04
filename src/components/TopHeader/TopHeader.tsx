@@ -1,9 +1,11 @@
+import { memo } from "react";
+
 interface TopHeaderProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
 }
 
-const TopHeader = ({ searchTerm, onSearchChange }: TopHeaderProps) => {
+const TopHeader = memo(({ searchTerm, onSearchChange }: TopHeaderProps) => {
   return (
     <header className="top-header">
       <div className="header-breadcrumb">
@@ -27,6 +29,7 @@ const TopHeader = ({ searchTerm, onSearchChange }: TopHeaderProps) => {
       </div>
     </header>
   );
-};
+});
 
 export default TopHeader;
+

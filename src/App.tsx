@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import useUsers from "./hooks/useUsers";
 import Sidebar from "./components/Sidebar/Sidebar";
 import TopHeader from "./components/TopHeader/TopHeader";
@@ -8,9 +8,6 @@ import UserDetailModal from "./components/UserDetailModal/UserDetailModal";
 import Pagination from "./components/Pagination/Pagination";
 import type { User } from "./types/user";
 import "./App.css";
-
-
-
 
 function App() {
   const {
@@ -39,15 +36,17 @@ function App() {
   } = useUsers();
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const handleCloseModal = useCallback(() => setSelectedUser(null), []);
+  const handleViewUser = useCallback((user: User) => setSelectedUser(user), []);
 
   if (loading) {
     return (
       <div className="layout" style={{ alignItems: "center", justifyContent: "center" }}>
         <div className="table-loading">
           <div className="spinner"></div>
-          <p>Đang tải 5.000 người dùng từ API...</p>
+          <p>Đang tải dữ liệu từ API...</p>
           <div className="loading-note">
-            Phiên bản chưa tối ưu — tải toàn bộ dữ liệu một lần thay vì phân trang từ server
+            Đã áp dụng phân trang API (Server-side Pagination)
           </div>
         </div>
       </div>
@@ -83,7 +82,7 @@ function App() {
             <div>
               <h1 className="page-title">Danh sách người dùng</h1>
               <p className="page-desc">
-                Quản lý toàn bộ {users.length.toLocaleString()} người dùng — phiên bản chưa được tối ưu hiệu năng
+                Quản lý toàn bộ {totalFiltered.toLocaleString()} người dùng — phiên bản đã tối ưu hiệu năng (Server-side Pagination)
               </p>
             </div>
           </div>
@@ -145,7 +144,7 @@ function App() {
               selectedUsers={selectedUsers}
               onSelectUser={toggleSelectUser}
               onSelectAll={selectAllPage}
-              onViewUser={(user) => setSelectedUser(user)}
+              onViewUser={handleViewUser}
               onDeleteUser={deleteSingle}
               sortField={sortField}
               sortOrder={sortOrder}
@@ -164,7 +163,7 @@ function App() {
         </div>
       </div>
 
-      <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+      <UserDetailModal user={selectedUser} onClose={handleCloseModal} />
     </div>
   );
 }

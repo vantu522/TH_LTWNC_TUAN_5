@@ -1,15 +1,17 @@
+import { memo } from "react";
+
 interface SidebarProps {
   totalUsers: number;
 }
 
-const Sidebar = ({ totalUsers }: SidebarProps) => {
+const Sidebar = memo(({ totalUsers }: SidebarProps) => {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="brand-logo">A</div>
         <div>
           <div className="brand-name">AdminPanel</div>
-          <div className="brand-version">v1.0 — Chưa tối ưu</div>
+          <div className="brand-version">v2.0 — Đã tối ưu</div>
         </div>
       </div>
 
@@ -61,6 +63,7 @@ const Sidebar = ({ totalUsers }: SidebarProps) => {
       </div>
     </aside>
   );
-};
+});
 
 export default Sidebar;
+

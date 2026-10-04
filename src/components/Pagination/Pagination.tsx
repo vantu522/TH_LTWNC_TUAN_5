@@ -1,3 +1,5 @@
+import { memo, useMemo } from "react";
+
 interface PaginationProps {
   currentPage: number;
   totalFiltered: number;
@@ -6,7 +8,7 @@ interface PaginationProps {
   onPageSizeChange: (size: number) => void;
 }
 
-const Pagination = ({
+const Pagination = memo(({
   currentPage,
   totalFiltered,
   pageSize,
@@ -17,7 +19,7 @@ const Pagination = ({
   const startItem = totalFiltered === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalFiltered);
 
-  const getPageNumbers = (): (number | "...")[] => {
+  const pageNumbers = useMemo((): (number | "...")[] => {
     const pages: (number | "...")[] = [];
     const delta = 2;
     for (let i = 1; i <= totalPages; i++) {
@@ -28,7 +30,7 @@ const Pagination = ({
       }
     }
     return pages;
-  };
+  }, [totalPages, currentPage]);
 
   if (totalPages <= 0) return null;
 
@@ -75,7 +77,7 @@ const Pagination = ({
             ‹
           </button>
 
-          {getPageNumbers().map((page, idx) =>
+          {pageNumbers.map((page, idx) =>
             page === "..." ? (
               <span key={`e-${idx}`} className="page-ellipsis">…</span>
             ) : (
@@ -107,6 +109,7 @@ const Pagination = ({
       </div>
     </div>
   );
-};
+});
 
 export default Pagination;
+

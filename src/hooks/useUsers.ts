@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { User } from "../types/user";
 import { fetchUsers } from "../services/userService";
+import { useDebounce } from "./useDebounce";
 
 export interface PerfMetrics {
   filterMs: number;
@@ -36,10 +37,12 @@ interface UseUsersReturn {
 
 const useUsers = (): UseUsersReturn => {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTermRaw] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  
   const [genderFilter, setGenderFilterRaw] = useState("all");
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -55,7 +58,7 @@ const useUsers = (): UseUsersReturn => {
     const load = async () => {
       setLoading(true);
       try {
-        const data = await fetchUsers(5000);
+        const data = await fetchUsers(currentPage, pageSize);
         setUsers(data.results);
       } catch (err) {
         setError("Lỗi khi tải dữ liệu. Vui lòng thử lại.");
@@ -65,9 +68,9 @@ const useUsers = (): UseUsersReturn => {
       }
     };
     load();
-  }, []);
+  }, [currentPage, pageSize]);
 
-  const getFilteredSortedUsers = (): User[] => {
+  const getFilteredSortedUsers = useCallback(() => {
     const t0 = performance.now();
 
     let result = users;
@@ -76,8 +79,8 @@ const useUsers = (): UseUsersReturn => {
       result = result.filter((u) => u.gender === genderFilter);
     }
 
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
+    if (debouncedSearchTerm.trim()) {
+      const term = debouncedSearchTerm.toLowerCase();
       result = result.filter(
         (u) =>
           u.name.first.toLowerCase().includes(term) ||
@@ -109,61 +112,72 @@ const useUsers = (): UseUsersReturn => {
       setPerf({
         filterMs: elapsed,
         renderCount: renderCount.current,
-        lastSearchMs: searchTerm.trim() ? elapsed : 0,
+        lastSearchMs: debouncedSearchTerm.trim() ? elapsed : 0,
       });
     }, 0);
 
     return result;
-  };
+  }, [users, genderFilter, debouncedSearchTerm, sortField, sortOrder]);
 
-  const filtered = getFilteredSortedUsers();
-  const totalFiltered = filtered.length;
-  const paginatedUsers = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const filtered = useMemo(() => getFilteredSortedUsers(), [getFilteredSortedUsers]);
+  // Khi dùng API phân trang, tổng số bản ghi giả lập là 5000 (RandomUser không hỗ trợ search server-side)
+  const totalFiltered = 5000;
+  // Không cần cắt mảng nữa vì API đã trả về đúng 1 trang
+  const paginatedUsers = filtered;
 
-  const setSearchTerm = (term: string) => {
+  const setSearchTerm = useCallback((term: string) => {
     setSearchTermRaw(term);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const setGenderFilter = (gender: string) => {
+  const setGenderFilter = useCallback((gender: string) => {
     setGenderFilterRaw(gender);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleSortChange = (field: string) => {
-    if (field === sortField) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-    else { setSortField(field); setSortOrder("asc"); }
+  const handleSortChange = useCallback((field: string) => {
+    setSortOrder((o) => {
+      if (field === sortField) return o === "asc" ? "desc" : "asc";
+      return "asc";
+    });
+    if (field !== sortField) {
+      setSortField(field);
+    }
     setCurrentPage(1);
-  };
+  }, [sortField]);
 
-  const toggleSelectUser = (uuid: string) => {
-    const next = new Set(selectedUsers);
-    next.has(uuid) ? next.delete(uuid) : next.add(uuid);
-    setSelectedUsers(next);
-  };
+  const toggleSelectUser = useCallback((uuid: string) => {
+    setSelectedUsers((prev) => {
+      const next = new Set(prev);
+      next.has(uuid) ? next.delete(uuid) : next.add(uuid);
+      return next;
+    });
+  }, []);
 
-  const selectAllPage = () => {
-    const next = new Set(selectedUsers);
-    const allSel = paginatedUsers.every((u) => next.has(u.login.uuid));
-    if (allSel) paginatedUsers.forEach((u) => next.delete(u.login.uuid));
-    else paginatedUsers.forEach((u) => next.add(u.login.uuid));
-    setSelectedUsers(next);
-  };
+  const selectAllPage = useCallback(() => {
+    setSelectedUsers((prev) => {
+      const next = new Set(prev);
+      const allSel = paginatedUsers.every((u) => next.has(u.login.uuid));
+      if (allSel) paginatedUsers.forEach((u) => next.delete(u.login.uuid));
+      else paginatedUsers.forEach((u) => next.add(u.login.uuid));
+      return next;
+    });
+  }, [paginatedUsers]);
 
-  const clearSelection = () => setSelectedUsers(new Set());
+  const clearSelection = useCallback(() => setSelectedUsers(new Set()), []);
 
-  const deleteSelected = () => {
+  const deleteSelected = useCallback(() => {
     setUsers((prev) => prev.filter((u) => !selectedUsers.has(u.login.uuid)));
     setSelectedUsers(new Set());
     setCurrentPage(1);
-  };
+  }, [selectedUsers]);
 
-  const deleteSingle = (uuid: string) => {
+  const deleteSingle = useCallback((uuid: string) => {
     setUsers((prev) => prev.filter((u) => u.login.uuid !== uuid));
     setSelectedUsers((prev) => { const n = new Set(prev); n.delete(uuid); return n; });
-  };
+  }, []);
 
-  const handleSetPageSize = (size: number) => { setPageSize(size); setCurrentPage(1); };
+  const handleSetPageSize = useCallback((size: number) => { setPageSize(size); setCurrentPage(1); }, []);
 
   return {
     users, loading, error,

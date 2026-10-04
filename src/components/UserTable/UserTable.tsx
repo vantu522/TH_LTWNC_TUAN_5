@@ -1,3 +1,5 @@
+import { memo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { User } from "../../types/user";
 
 interface UserTableProps {
@@ -12,7 +14,7 @@ interface UserTableProps {
   onSortChange: (field: string) => void;
 }
 
-const UserTable = ({
+const UserTable = memo(({
   users,
   selectedUsers,
   onSelectUser,
@@ -24,6 +26,15 @@ const UserTable = ({
   onSortChange,
 }: UserTableProps) => {
   const allSelected = users.length > 0 && users.every((u) => selectedUsers.has(u.login.uuid));
+  
+  const parentRef = useRef<HTMLDivElement>(null);
+  
+  const virtualizer = useVirtualizer({
+    count: users.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 64, // estimated row height
+    overscan: 5,
+  });
 
   const SortIndicator = ({ field }: { field: string }) => {
     if (sortField !== field) return null;
@@ -42,7 +53,7 @@ const UserTable = ({
   }
 
   return (
-    <div className="table-wrapper">
+    <div className="table-wrapper" ref={parentRef} style={{ maxHeight: '600px', overflowY: 'auto' }}>
       <table className="data-table">
         <thead>
           <tr>
@@ -88,12 +99,23 @@ const UserTable = ({
             <th>Thao tác</th>
           </tr>
         </thead>
-        <tbody>
-          {users.map((user) => {
+        <tbody style={{ position: 'relative' }}>
+          {virtualizer.getVirtualItems().length > 0 && virtualizer.getVirtualItems()[0].start > 0 && (
+            <tr>
+              <td colSpan={7} style={{ height: `${virtualizer.getVirtualItems()[0].start}px`, padding: 0, border: 'none' }} />
+            </tr>
+          )}
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const user = users[virtualRow.index];
             const fullName = `${user.name.title} ${user.name.first} ${user.name.last}`;
             const isSelected = selectedUsers.has(user.login.uuid);
             return (
-              <tr key={user.login.uuid} className={isSelected ? "selected" : ""}>
+              <tr 
+                key={user.login.uuid} 
+                className={isSelected ? "selected" : ""}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+              >
                 <td>
                   <input
                     type="checkbox"
@@ -107,6 +129,7 @@ const UserTable = ({
                       src={user.picture.thumbnail}
                       alt={fullName}
                       className="user-thumb"
+                      loading={virtualRow.index < 5 ? "eager" : "lazy"}
                     />
                     <div>
                       <div className="user-full-name">{fullName}</div>
@@ -152,10 +175,22 @@ const UserTable = ({
               </tr>
             );
           })}
+          {virtualizer.getVirtualItems().length > 0 && (
+            <tr>
+              <td 
+                colSpan={7} 
+                style={{ 
+                  height: `${virtualizer.getTotalSize() - virtualizer.getVirtualItems()[virtualizer.getVirtualItems().length - 1].end}px`, 
+                  padding: 0, 
+                  border: 'none' 
+                }} 
+              />
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
   );
-};
+});
 
 export default UserTable;

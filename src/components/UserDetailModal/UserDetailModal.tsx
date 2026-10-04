@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { User } from "../../types/user";
 
 interface UserDetailModalProps {
@@ -5,7 +6,7 @@ interface UserDetailModalProps {
   onClose: () => void;
 }
 
-const UserDetailModal = ({ user, onClose }: UserDetailModalProps) => {
+const UserDetailModal = memo(({ user, onClose }: UserDetailModalProps) => {
   if (!user) return null;
 
   const fullName = `${user.name.title} ${user.name.first} ${user.name.last}`;
@@ -21,7 +22,7 @@ const UserDetailModal = ({ user, onClose }: UserDetailModalProps) => {
 
         {/* User hero */}
         <div className="modal-user-hero">
-          <img src={user.picture.large} alt={fullName} className="modal-user-avatar" />
+          <img src={user.picture.large} alt={fullName} className="modal-user-avatar" loading="lazy" />
           <div>
             <div className="modal-user-name">{fullName}</div>
             <div className="modal-user-meta">
@@ -120,6 +121,7 @@ const UserDetailModal = ({ user, onClose }: UserDetailModalProps) => {
       </div>
     </div>
   );
-};
+});
 
 export default UserDetailModal;
+
